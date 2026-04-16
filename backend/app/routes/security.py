@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import cast
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.deps import get_current_admin, get_db
-from app.models import AttackLog, DetectionRule, RequestLog
+from app.models import AttackLog, RequestLog
 from app.schemas import AttackLogList, RuleItem, RuleList, RuleToggleRequest, SecurityStats
 from app.services.waf_rules import list_rules, toggle_rule
 
@@ -23,7 +24,7 @@ def get_logs(
         .limit(limit)
         .all()
     )
-    return AttackLogList(items=items)
+    return AttackLogList(items=cast(list, items))
 
 
 @router.get("/stats", response_model=SecurityStats)

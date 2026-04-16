@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
+from typing import cast
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -28,7 +29,7 @@ def get_dashboard_stats(
     query = query.filter(AttackLog.created_at >= start_time)
 
     if attack_type and attack_type.lower() != "all":
-        query = query.filter(AttackLog.reason.ilike(f"%{attack_type}%"))
+        query = query.filter(AttackLog.attack_type.ilike(f"%{attack_type}%"))
 
     latest_attacks = query.order_by(AttackLog.created_at.desc()).limit(limit).all()
 
@@ -36,5 +37,5 @@ def get_dashboard_stats(
         total_attacks_blocked=total_attacks,
         total_users=total_users,
         verified_users=verified_users,
-        latest_attacks=latest_attacks,
+        latest_attacks=cast(list, latest_attacks),
     )

@@ -19,26 +19,26 @@ const api = axios.create({
   baseURL: `${apiRoot}/api`,
 })
 
-const ATTACK_TYPES = ['All', 'SQL Injection', 'XSS', 'DDoS', 'LFI', 'Other']
+const ATTACK_TYPES = ['All', 'SQL Injection', 'XSS', 'Command Injection', 'LFI', 'Other']
 const ATTACK_COLORS = {
   'SQL Injection': '#f4d34f',
   XSS: '#5ac88d',
-  DDoS: '#3f8cff',
+  'Command Injection': '#3f8cff',
   LFI: '#6e70e8',
   Other: '#9ca3af',
 }
 
-function detectAttackType(reason = '') {
-  const text = reason.toLowerCase()
-  if (text.includes('sql')) return 'SQL Injection'
-  if (text.includes('xss') || text.includes('script')) return 'XSS'
-  if (text.includes('ddos') || text.includes('flood') || text.includes('rate')) return 'DDoS'
-  if (text.includes('lfi') || text.includes('../') || text.includes('path traversal')) return 'LFI'
+function detectAttackType(reason = '', attackType = '') {
+  const source = `${attackType} ${reason}`.toLowerCase()
+  if (source.includes('sql')) return 'SQL Injection'
+  if (source.includes('xss') || source.includes('script')) return 'XSS'
+  if (source.includes('command injection') || source.includes('cmd') || source.includes('shell')) return 'Command Injection'
+  if (source.includes('lfi') || source.includes('../') || source.includes('path traversal')) return 'LFI'
   return 'Other'
 }
 
 function detectSeverity(type) {
-  if (type === 'SQL Injection' || type === 'DDoS') return 'High'
+  if (type === 'SQL Injection' || type === 'Command Injection') return 'High'
   if (type === 'LFI' || type === 'XSS') return 'Medium'
   return 'Low'
 }
@@ -105,7 +105,6 @@ function DashboardPage() {
   const [query, setQuery] = useState('')
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', dir: 'desc' })
   const [autoRefresh, setAutoRefresh] = useState(false)
-  const [showAlerts, setShowAlerts] = useState(false)
   const [selectedLog, setSelectedLog] = useState(null)
   const [copiedField, setCopiedField] = useState('')
   const [backendUp, setBackendUp] = useState(true)
@@ -168,7 +167,7 @@ function DashboardPage() {
 
   const logs = useMemo(
     () => statsData.latest_attacks.map((item) => {
-      const attackType = detectAttackType(item.reason)
+      const attackType = detectAttackType(item.reason, item.attack_type)
       return {
         ...item,
         attackType,
@@ -319,7 +318,7 @@ function DashboardPage() {
     }
   }, [baseCurrentLogs, basePreviousLogs, currentWindowLogs.length, previousWindowLogs.length, statsData])
 
-  const detectedDetails = `XSS=${stats.typeCounts.XSS || 0} | SQL=${stats.typeCounts['SQL Injection'] || 0} | DDoS=${stats.typeCounts.DDoS || 0} | LFI=${stats.typeCounts.LFI || 0} | Other=${stats.typeCounts.Other || 0}`
+  const detectedDetails = `XSS=${stats.typeCounts.XSS || 0} | SQL=${stats.typeCounts['SQL Injection'] || 0} | Command=${stats.typeCounts['Command Injection'] || 0} | LFI=${stats.typeCounts.LFI || 0} | Other=${stats.typeCounts.Other || 0}`
 
   const totalDelta = getDelta(stats.totalLogs, stats.previousTotalLogs)
   const detectedDelta = getDelta(stats.detectedAttacks, stats.previousDetectedAttacks)
@@ -411,16 +410,6 @@ function DashboardPage() {
         </div>
 
         <div className="topbar-actions">
-          <button
-            className="notif"
-            type="button"
-            aria-label="Toggle alerts panel"
-            onClick={() => setShowAlerts((prev) => !prev)}
-          >
-            <span>!</span>
-            {criticalLogCount > 0 && <em>{criticalLogCount}</em>}
-          </button>
-
           <label className="theme-toggle" aria-label="Toggle dark or light theme">
             <input
               type="checkbox"
@@ -439,22 +428,6 @@ function DashboardPage() {
           </button>
         </div>
       </header>
-
-      {showAlerts && (
-        <section className="panel-card alerts-popover">
-          <h4>Critical Alerts</h4>
-          {criticalLogCount === 0 ? <p>No critical alerts in current filters.</p> : (
-            <ul>
-              {baseCurrentLogs.filter((entry) => entry.severity === 'High').slice(0, 5).map((entry) => (
-                <li key={`critical-${entry.id}`}>
-                  <strong>{entry.attackType}</strong>
-                  <span>{entry.ip_address} | {entry.path}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
 
       <section className="welcome-area">
         <h2>Welcome Admin</h2>
